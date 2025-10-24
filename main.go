@@ -45,6 +45,10 @@ func main() {
 		if port == "" {
 			port = "5432"
 		}
+		sslmode := os.Getenv("POSTGRES_SSLMODE")
+		if sslmode == "" {
+			sslmode = "disable"
+		}
 
 		u := &url.URL{Scheme: "postgres"}
 		if pass != "" {
@@ -54,9 +58,10 @@ func main() {
 		}
 		u.Host = net.JoinHostPort(host, port)
 		u.Path = "/" + dbname
-		// Do not set sslmode by default; leave to lib/pq defaults or PG params
+		u.RawQuery = "sslmode=" + sslmode
 		dsn = u.String()
 	}
+	log.Printf("Built DSN: %s", dsn)
 
 	tablesToCheck := os.Getenv("PG_HEALTHY_TABLES")
 	var tables []string
@@ -90,6 +95,7 @@ func main() {
 		if err := db.PingContext(ctx); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			_ = json.NewEncoder(w).Encode(HealthResponse{Status: "unhealthy", Error: err.Error()})
+			log.Printf("Health check failed (Ping): %v", err)
 			return
 		}
 
@@ -99,6 +105,7 @@ func main() {
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				_ = json.NewEncoder(w).Encode(HealthResponse{Status: "unhealthy", Error: err.Error()})
+				log.Printf("Health check failed (Table check): %v", err)
 				return
 			}
 		}
@@ -109,6 +116,7 @@ func main() {
 			if err != nil {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				_ = json.NewEncoder(w).Encode(HealthResponse{Status: "unhealthy", Error: err.Error()})
+				log.Printf("Health check failed (Query): %v", err)
 				return
 			}
 			results = append(results, result)

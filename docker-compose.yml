@@ -1,0 +1,19 @@
+services:
+  pghealthy:
+    container_name: pghealthy
+    build: . # image: ghcr.io/floholz/pghealthy:1 # use this for production
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=my_local_password
+      - POSTGRES_DB=my_database
+      - POSTGRES_HOST=postgres_database
+      - POSTGRES_PORT=5432
+      - PG_HEALTHY_TABLES=User,Documents
+    restart: unless-stopped
+
+  database:
+    image: postgres:14.1-alpine
+    environment:
+      - POSTGRES_PASSWORD=my-database-password
+    volumes:
+      - ./data:/var/lib/postgresql/data
